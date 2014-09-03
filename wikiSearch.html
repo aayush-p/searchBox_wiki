@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="shortcut icon" href="../../assets/ico/favicon.ico">
+
+    <title>Wiki Search</title>
+
+    <!-- Bootstrap core CSS -->
+		<link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+		<link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css">
+			
+		<script type="text/javascript">
+		$(document).ready(function(){
+			$("#next").hide();
+			$("#prev").hide();
+
+			$("#searchbtn").click(function(){
+				requestData("click");
+			});
+
+			$('#searchString').keypress(function (data) {
+				if (data.which == 13) {
+					requestData("click");
+					return false;
+				}
+			});
+
+			$('#searchString').bind('input', function(){
+				var oldStr= $("#searchString").val();
+				window.setTimeout(function(){
+					var newStr= $("#searchString").val();
+					if (newStr == oldStr){
+						requestData("bind");
+					}
+				},400);
+			});
+	
+		});
+		</script>
+  </head>
+
+  <body>
+
+    <div class="container">
+
+		<div class="row" style="margin-top: 10px; margin-bottom: 30px;">
+			<h2 class="form-signin-heading" align="center">Wiki API Search</h2>
+			<div class="col-lg-6 col-md-offset-3">
+				<div class="input-group input-group-lg" align="center">
+					<input type="text" class="form-control" name="searchString" id="searchString" placeholder="Search String" required autofocus>
+					<span class="input-group-btn">
+						<button class="btn btn-primary" type="button" name="searchbtn" id="searchbtn"><span class="glyphicon glyphicon-search"> </span></button>
+					</span>
+				</div><!-- /input-group -->
+			</div><!-- /.col-lg-6 -->
+		</div><!-- /.row -->
+	 
+		<div class="row" id="resultdiv"></div> <!-- /container -->
+		
+		<div class="row" style="margin-top: 10px; margin-bottom: 10px;">
+			<div class="col-lg-1 col-md-offset-3" id = "prev"><button class='btn btn-lg btn-primary' id='btnPrev' type='button' onclick="requestData('prev');">Previous Page</button></div>
+			<div class="col-lg-6 col-md-offset-2" id = "next"> <button id="btnNext" class="btn btn-lg btn-primary" onclick="requestData('next');" type="button" style="padding-left: 32px; padding-right: 32px;">Next Page</button>
+			</div>	
+		</div>
+		
+		<input type="hidden" name="curPage" id="curPage" value="0">
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+
+    <!-- Placed at the end of the document so the pages load faster -->
+		<script>
+			function requestData(requester){
+				var str= $("#searchString").val();
+				var curPage = $("#curPage").val();
+				
+				if (requester == "next"){
+					curPage++;
+				}
+				else if (requester == "prev"){
+					curPage--;
+				}
+				else if (requester == "bind" || requester == "click"){
+					curPage=0;
+				}
+				$("#curPage").val(curPage);
+				
+				var wikiurl = "http://en.wikipedia.org/w/api.php?action=query&list=search&srprop=snippet&format=json&srlimit=10&srsearch=" + str + "&sroffset=" + curPage*10 + "&callback=?";
+			
+				$.ajax({
+					dataType: "jsonp",
+					url: wikiurl,
+					cache: true,
+					success: function(data){
+						var temp="";
+						
+						if (curPage == '0'){	//set prev invisible
+							$("#prev").hide();
+						}
+						else{
+							$("#prev").show();
+						}
+						if ('query-continue' in data){	//set next visible
+							$("#next").show();
+						}
+						else {
+							$("#next").hide();
+						}
+						if ( typeof data.error == 'object' && data.error.code == "srnosearch"){
+							if (requester=="click"){
+								temp = "<div class='bs-callout bs-callout-danger' align='center'><h4>Enter a search query...</h4><p></div>"
+							}
+							$("#resultdiv").html(temp);
+							return;
+						}			
+						else if (data.query.searchinfo.totalhits == 0 && requester == "click"){
+							temp = "<div class='bs-callout bs-callout-danger' align='center'><h4>No reuslts found...</h4><p></div>"
+							$("#resultdiv").html(temp);
+							return;
+						}
+						
+						//fill the results as a list in results div
+						fillResult(data);
+					}
+				});
+			}
+
+		function fillResult(data){
+			var temp = "";
+			
+			for(i =0; i < data.query.search.length;i++)
+			{
+				temp += "<a href='http://en.wikipedia.org/wiki/" + encodeURIComponent(data.query.search[i].title) + "' class='list-group-item '> <h4 class='list-group-item-heading'  style='color: #336699'>" + data.query.search[i].title + "</h4><p class='list-group-item-text'>" + data.query.search[i].snippet + "</p></a>";
+			}
+			temp = "<div class='list-group'>"+temp+"</div>";
+			var result = $("#resultdiv");
+			result.html(temp);
+			window.scrollTo(0, 0);
+		}
+		</script>
+  </body>
+</html>
